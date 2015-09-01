@@ -12,18 +12,58 @@ a typical binary tree, an IntMap boasts exceptionally fast merge performance.
 // IntMaps can hold any type of value.
 type Entry interface{}
 
-type node struct {
+type Node struct {
+	// The prefix
 	p uint64
+	// The branching bit
 	m uint64
-	t [2]*node
+	// flag indicating whether the Node is non-empty. negation so that zero-value is correct
+	notEmpty bool
+	// The children
+	t [2]*Node
+	// The value (iff a leaf)
+	l *leaf
+}
+
+type leaf struct {
+	k uint64
 	v Entry
 }
 
-type emptyBranch struct{}
+var root = &Node{}
 
-var empty = emptyBranch{}
+// NewMap creates a new empty IntMap for use. This is operation performs no allocations.
+func NewMap() *Node {
+	return root
+}
 
-func (b *node) Get(k uint64) (Entry, bool) {
+func (n *Node) Insert(k uint64, v Entry) *Node {
+	var newNode = &Node{
+		p:        n.p,
+		m:        n.m,
+		notEmpty: true,
+		l:        &leaf{k, v},
+	}
+	if !n.notEmpty {
+		return newNode
+	} else {
+		if n.l != nil {
+			// On a leaf, so replace if key is same, else join
+			if n.l.k == k {
+				return newNode
+			} else {
+				n.join(k, n.l.k, newNode, n)
+			}
+		} else {
+			// On a branch, so we must recurse
+			if mask(k, n.m) == n.p {
+				// There's a prefix match, so recurse down
+			}
+		}
+	}
+}
+
+func (b *Node) Get(k uint64) (Entry, bool) {
 	// Simple comparison is possible because big-endian Patricia trees are teh awesome
 	if k <= b.p {
 		if b.t[0] == nil {
@@ -40,10 +80,10 @@ func (b *node) Get(k uint64) (Entry, bool) {
 	}
 }
 
-func (b *node) join(p0, p1 uint64, t0, t1 *node) *node {
+func (b *Node) join(p0, p1 uint64, t0, t1 *Node) *Node {
 	var (
 		m = branchingBit(p0, p1)
-		t [2]*node
+		t [2]*Node
 	)
 
 	if zeroBit(p0, m) {
@@ -52,7 +92,7 @@ func (b *node) join(p0, p1 uint64, t0, t1 *node) *node {
 		t[0], t[1] = t1, t0
 	}
 
-	return &node{
+	return &Node{
 		p: mask(p0, m),
 		m: m,
 		t: t,
