@@ -55,13 +55,13 @@ func (n *Node) Insert(k uint64, v Entry) *Node {
 			if n.l.k == k {
 				return newNode
 			} else {
-				return n.join(k, n.l.k, newNode, n)
+				return join(k, n.l.k, newNode, n)
 			}
 		} else {
 			// On a branch, so we must recurse somehow
 			if matchPrefix(k, n.m, n.p) {
 				// No prefix match, so we join the two trees
-				return n.join(k, n.p, newNode, n)
+				return join(k, n.p, newNode, n)
 			} else {
 				// There's a prefix match. Perform branch copy by recursing down
 				if zeroBit(k, n.m) {
@@ -93,7 +93,7 @@ func (b *Node) Get(k uint64) (Entry, bool) {
 	}
 }
 
-func (b *Node) join(p0, p1 uint64, t0, t1 *Node) *Node {
+func join(p0, p1 uint64, t0, t1 *Node) *Node {
 	var (
 		m = branchingBit(p0, p1)
 		t [2]*Node
