@@ -44,6 +44,9 @@ func (n *Node) Insert(k uint64, v Entry) *Node {
 		notEmpty: true,
 		l:        &leaf{k, v},
 	}
+
+	// This could just as easily be written with a single return after all the if
+	// statements, but is expressed this way instead for readability.
 	if !n.notEmpty {
 		return newNode
 	} else {
@@ -52,12 +55,22 @@ func (n *Node) Insert(k uint64, v Entry) *Node {
 			if n.l.k == k {
 				return newNode
 			} else {
-				n.join(k, n.l.k, newNode, n)
+				return n.join(k, n.l.k, newNode, n)
 			}
 		} else {
-			// On a branch, so we must recurse
-			if mask(k, n.m) == n.p {
-				// There's a prefix match, so recurse down
+			// On a branch, so we must recurse somehow
+			if matchPrefix(k, n.m, n.p) {
+				// No prefix match, so we join the two trees
+				return n.join(k, n.p, newNode, n)
+			} else {
+				// There's a prefix match. Perform branch copy by recursing down
+				if zeroBit(k, n.m) {
+					newNode.t[0], newNode.t[1] = n.t[0].Insert(k, v), n.t[1]
+				} else {
+					newNode.t[0], newNode.t[1] = n.t[0], n.t[1].Insert(k, v)
+				}
+
+				return newNode
 			}
 		}
 	}
@@ -93,9 +106,10 @@ func (b *Node) join(p0, p1 uint64, t0, t1 *Node) *Node {
 	}
 
 	return &Node{
-		p: mask(p0, m),
-		m: m,
-		t: t,
+		p:        mask(p0, m),
+		m:        m,
+		t:        t,
+		notEmpty: true,
 	}
 }
 
@@ -112,5 +126,9 @@ func mask(k, m uint64) uint64 {
 }
 
 func matchPrefix(k, p, m uint64) bool {
-	return mask(k, m) == p
+	// return mask(k, m) == p // should be this, but...
+
+	// go compiler won't inline a func containing a function call, so
+	// mask() is duplicated to ensure the compiler inlines the call
+	return (k & (m - 1)) == p
 }
